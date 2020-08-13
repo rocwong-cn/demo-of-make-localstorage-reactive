@@ -1,0 +1,68 @@
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+
+<body>
+  <div id="counter"></div>
+</body>
+<script src="https://cdn.jsdelivr.net/npm/vue@2.6.11"></script>
+<script>
+  // localStorage项键和依赖它的Vue实例列表之间的映射
+  const storeItemSubscribers = {};
+
+  const getItem = window.localStorage.getItem;
+  localStorage.getItem = (key, target) => {
+    console.info("Getting", key);
+
+    // 收集依赖的Vue实例
+    if (!storeItemSubscribers[key]) storeItemSubscribers[key] = [];
+    if (target) storeItemSubscribers[key].push(target);
+
+    // 调用原始方法
+    return getItem.call(localStorage, key);
+  };
+
+  const setItem = window.localStorage.setItem;
+  localStorage.setItem = (key, value) => {
+    console.info("Setting", key, value);
+
+    // 更新依赖vue实例中的值
+    if (storeItemSubscribers[key]) {
+      storeItemSubscribers[key].forEach((dep) => {
+        if (dep.hasOwnProperty(key)) dep[key] = value;
+      });
+    }
+
+    // 调用原始方法
+    setItem.call(localStorage, key, value);
+  };
+
+  new Vue({
+    el: "#counter",
+    data: function () {
+      return {
+        counter: localStorage.getItem("counter", this) // We need to pass 'this' for now
+      }
+    },
+    computed: {
+      even() {
+        return this.counter % 2 == 0;
+      }
+    },
+    template: `<div>
+    <div>Counter: {{ counter }}</div>
+    <div>Counter is {{ even ? 'even' : 'odd' }}</div>
+  </div>`
+  });
+
+  setInterval(() => {
+    const counter = localStorage.getItem("counter");
+    localStorage.setItem("counter", +counter + 1);
+  }, 1000);
+</script>
+
+</html>
